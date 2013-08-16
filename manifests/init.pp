@@ -35,11 +35,12 @@
 class osqa (
   $install_dir = '/home/osqa',
   $username    = 'osqa',
+  $group       = 'osqa',
   $db_name     = 'osqa',
-  $timezone    = 'Americas/Los_Angeles',
-  $app_url     = 'http://puppet-article-3',
-  $db_username = $username,
-  $db_password = hiera('osqa_db_password', 'changme!'),
+  $timezone    = 'America/Los_Angeles',
+  $app_url     = 'http://puppet-article-4',
+  $db_username = 'osqa',
+  $db_password = 'changme!',
 ) {
 
   class { 'apache':
@@ -47,9 +48,26 @@ class osqa (
   }
   include apache::mod::wsgi
 
+  group { $group:
+    ensure => present,
+  }
+
+  package { 'libmysqlclient-dev':
+    ensure => present,
+  }
+
   user { $username:
     ensure     => present,
+    gid        => $group,
     managehome => true,
+    require    => Group[$username],
+  }
+
+  file { $install_dir:
+    owner   => $username,
+    recurse => true,
+    require => Group[$username],
+    before  => File["${install_dir}/requirements.txt"],
   }
 
   # FIXME: 2013/08/16 apache module does not support wsgi yet
@@ -57,6 +75,41 @@ class osqa (
     ensure  => file,
     content => "WSGISocketPrefix ${APACHE_RUN_DIR}WSGI\nWSGIPythonHome ${install_dir}/virtenv-osqa",
     notify  => Service['apache2'],
+  }
+
+  file { "${install_dir}/osqa-server/log":
+    ensure  => directory,
+    group   => 'www-data',
+    mode    => 0770,
+    require => Vcsrepo["${install_dir}/osqa-server"],
+  }
+
+  file { "${install_dir}/forum_modules":
+    ensure  => directory,
+    group   => 'www-data',
+    mode    => 0770,
+    require => Vcsrepo["${install_dir}/osqa-server"],
+  }
+
+  file { "${install_dir}/log":
+    ensure  => directory,
+    group   => 'www-data',
+    mode    => 0770,
+    require => Vcsrepo["${install_dir}/osqa-server"],
+  }
+
+  file { "${install_dir}/cache":
+    ensure  => directory,
+    group   => 'www-data',
+    mode    => 0770,
+    require => Vcsrepo["${install_dir}/osqa-server"],
+  }
+
+  file { '/home/osqa/osqa-server/forum/upfiles':
+    ensure  => directory,
+    group   => 'www-data',
+    mode    => 0770,
+    require => Vcsrepo["${install_dir}/osqa-server"],
   }
 
   # FIXME: 2013/08/16 apache module does not support wsgi yet
@@ -94,6 +147,7 @@ class osqa (
     config_hash => { 'root_password' => hiera('mysql_root_password', 'changme!') },
   }
 
+
   include mysql::bindings::python
 
   mysql::db { $db_name:
@@ -123,7 +177,7 @@ class osqa (
     ensure       => present,
     version      => 'system',
     systempkgs   => false,
-    distribute   => false,
+    distribute   => true,
     requirements => "${install_dir}/requirements.txt",
     owner        => $username,
     require      => [Vcsrepo["${install_dir}/osqa-server"], Class['python'], File["${install_dir}/requirements.txt"]],
