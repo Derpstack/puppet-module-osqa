@@ -35,23 +35,27 @@
 class osqa (
   $install_dir = '/home/osqa',
   $username    = 'osqa',
-  $wsgi_group  = 'OSQA',
+  $db_name     = 'osqa',
+  $timezone    = 'Americas/Los_Angeles',
+  $app_url     = 'http://puppet-article-3',
+  $db_username = $username,
+  $db_password = hiera('osqa_db_password', 'changme!'),
 ) {
 
-  include apache
+  class { 'apache':
+    default_vhost => false,
+  }
   include apache::mod::wsgi
 
-  #this is your wsgi script described in the prev section
-  #WSGIScriptAlias / /home/osqa/osqa-server/osqa.wsgi
   user { $username:
     ensure     => present,
     managehome => true,
   }
 
   # FIXME: 2013/08/16 apache module does not support wsgi yet
-  file { '/etc/apache2/sites-available/wsgi.conf':
+  file { '/etc/apache2/sites-enabled/wsgi.conf':
     ensure  => file,
-    content => 'WSGISocketPrefix ${APACHE_RUN_DIR}',
+    content => "WSGISocketPrefix ${APACHE_RUN_DIR}WSGI\nWSGIPythonHome ${install_dir}/virtenv-osqa",
     notify  => Service['apache2'],
   }
 
@@ -59,7 +63,7 @@ class osqa (
   apache::vhost { 'osqa-vhost':
     port            => 80,
     docroot         => "$install_dir/osqa-server",
-    custom_fragment => "  WSGIProcessGroup $wsgi_group \n  WSGIProcessGroup $wsgi_group\n  WSGIScriptAlias / $install_dir/osqa-server/osqa.wsgi",
+    custom_fragment => "  WSGIDaemonProcess OSQA \n  WSGIProcessGroup OSQA\n  WSGIScriptAlias / $install_dir/osqa-server/osqa.wsgi\n ",
     directories => [
       { path => "$install_dir/osqa-server/forum/upfiles", order => 'deny,allow', allow => 'from all' },
       { path => "$install_dir/osqa-server/forum/skins", order => 'allow,deny', allow => 'from all' }
@@ -68,18 +72,20 @@ class osqa (
       { alias => '/m/', path => "$install_dir/osqa-server/forum/skins" },
       { alias => '/upfiles/', path => "$install_dir/osqa-server/forum/upfiles" }
     ],
-    require => Vcsrepo[$install_dir],
+    require => Vcsrepo["${install_dir}/osqa-server"],
   }
 
-  vcsrepo { $install_dir:
+  vcsrepo { "${install_dir}/osqa-server":
     ensure   => present,
     provider => svn,
     source   => 'http://svn.osqa.net/svnroot/osqa/trunk/',
     revision => '1285',
+    user     => $username,
+    owner    => $group,
     require  => User['osqa'],
   }
 
-  file { "${install_dir}/wsgi":
+  file { "${install_dir}/osqa-server/osqa.wsgi":
     content => template('osqa/osqa.wsgi.erb'),
     require => User['osqa'],
   }
@@ -88,12 +94,60 @@ class osqa (
     config_hash => { 'root_password' => hiera('mysql_root_password', 'changme!') },
   }
 
-  mysql::db { 'osqa':
-    user     => 'osqa',
-    password => hiera('osqa_db_password', 'changme!'),
+  include mysql::bindings::python
+
+  mysql::db { $db_name:
+    user     => $db_username,
+    password => $db_password,
     grant    => ['all'],
   }
 
-  Class['mysql::server'] -> Mysql::Db['osqa']
+  file { "$install_dir/settings_local.py":
+    owner   => $username,
+    content => template('osqa/settings_local.py.erb'),
+    require => Vcsrepo["${install_dir}/osqa-server"]
+  }
+
+  file { "$install_dir/requirements.txt":
+    content => template('osqa/requirements.txt'),
+    require => Vcsrepo["${install_dir}/osqa-server"]
+  }
+
+  class { 'python':
+    version    => 'system',
+    dev        => true,
+    virtualenv => true,
+  }
+
+  python::virtualenv { "${install_dir}/virtenv-osqa":
+    ensure       => present,
+    version      => 'system',
+    systempkgs   => false,
+    distribute   => false,
+    requirements => "${install_dir}/requirements.txt",
+    owner        => $username,
+    require      => [Vcsrepo["${install_dir}/osqa-server"], Class['python'], File["${install_dir}/requirements.txt"]],
+  }
+
+  exec { 'syncdb':
+    cwd         => "${install_dir}/osqa-server",
+    provider    => shell,
+    user        => $username,
+    command     => "source ../virtenv-osqa/bin/activate && ${install_dir}/virtenv-osqa/bin/python manage.py syncdb --all",
+    refreshonly => true,
+    notify      => Exec['migrate-forum'],
+  }
+
+  exec { 'migrate-forum':
+    cwd         => "${install_dir}/osqa-server",
+    provider    => shell,
+    user        => $username,
+    command     => "source ../virtenv-osqa/bin/activate && ${install_dir}/virtenv-osqa/bin/python manage.py migrate forum --fake",
+    refreshonly => true,
+  }
+
+  Class['python'] -> Python::Virtualenv <| |>
+  -> Python::Pip <| |> -> Class['mysql::server']
+  -> Mysql::Db[$db_name]
 
 }
