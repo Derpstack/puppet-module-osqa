@@ -32,16 +32,68 @@
 #
 # Copyright 2013 Your name here, unless otherwise noted.
 #
-class osqa {
+class osqa (
+  $install_dir = '/home/osqa',
+  $username    = 'osqa',
+  $wsgi_group  = 'OSQA',
+) {
 
   include apache
   include apache::mod::wsgi
 
-  vcsrepo { '/var/www/osqa':
+  #this is your wsgi script described in the prev section
+  #WSGIScriptAlias / /home/osqa/osqa-server/osqa.wsgi
+  user { $username:
+    ensure     => present,
+    managehome => true,
+  }
+
+  # FIXME: 2013/08/16 apache module does not support wsgi yet
+  file { '/etc/apache2/sites-available/wsgi.conf':
+    ensure  => file,
+    content => 'WSGISocketPrefix ${APACHE_RUN_DIR}',
+    notify  => Service['apache2'],
+  }
+
+  # FIXME: 2013/08/16 apache module does not support wsgi yet
+  apache::vhost { 'osqa-vhost':
+    port            => 80,
+    docroot         => "$install_dir/osqa-server",
+    custom_fragment => "  WSGIProcessGroup $wsgi_group \n  WSGIProcessGroup $wsgi_group\n  WSGIScriptAlias / $install_dir/osqa-server/osqa.wsgi",
+    directories => [
+      { path => "$install_dir/osqa-server/forum/upfiles", order => 'deny,allow', allow => 'from all' },
+      { path => "$install_dir/osqa-server/forum/skins", order => 'allow,deny', allow => 'from all' }
+    ],
+    aliases => [
+      { alias => '/m/', path => "$install_dir/osqa-server/forum/skins" },
+      { alias => '/upfiles/', path => "$install_dir/osqa-server/forum/upfiles" }
+    ],
+    require => Vcsrepo[$install_dir],
+  }
+
+  vcsrepo { $install_dir:
     ensure   => present,
     provider => svn,
     source   => 'http://svn.osqa.net/svnroot/osqa/trunk/',
     revision => '1285',
+    require  => User['osqa'],
   }
+
+  file { "${install_dir}/wsgi":
+    content => template('osqa/osqa.wsgi.erb'),
+    require => User['osqa'],
+  }
+
+  class { 'mysql::server':
+    config_hash => { 'root_password' => hiera('mysql_root_password', 'changme!') },
+  }
+
+  mysql::db { 'osqa':
+    user     => 'osqa',
+    password => hiera('osqa_db_password', 'changme!'),
+    grant    => ['all'],
+  }
+
+  Class['mysql::server'] -> Mysql::Db['osqa']
 
 }
