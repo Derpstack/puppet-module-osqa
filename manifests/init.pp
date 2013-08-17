@@ -105,6 +105,13 @@ class osqa (
     require => Vcsrepo["${install_dir}/osqa-server"],
   }
 
+  file { "${install_dir}/osqa-server/cache":
+    ensure  => directory,
+    group   => 'www-data',
+    mode    => 0770,
+    require => Vcsrepo["${install_dir}/osqa-server"],
+  }
+
   file { '/home/osqa/osqa-server/forum/upfiles':
     ensure  => directory,
     group   => 'www-data',
@@ -135,7 +142,7 @@ class osqa (
     revision => '1285',
     user     => $username,
     owner    => $group,
-    require  => User['osqa'],
+    require  => [User['osqa'], File[$install_dir]],
   }
 
   file { "${install_dir}/osqa-server/osqa.wsgi":
