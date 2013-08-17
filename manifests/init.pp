@@ -122,8 +122,8 @@ class osqa (
       { path => "$install_dir/osqa-server/forum/skins", order => 'allow,deny', allow => 'from all' }
     ],
     aliases => [
-      { alias => '/m/', path => "$install_dir/osqa-server/forum/skins" },
-      { alias => '/upfiles/', path => "$install_dir/osqa-server/forum/upfiles" }
+      { alias => '/m/', path => "$install_dir/osqa-server/forum/skins/" },
+      { alias => '/upfiles/', path => "$install_dir/osqa-server/forum/upfiles/" }
     ],
     require => Vcsrepo["${install_dir}/osqa-server"],
   }
@@ -156,7 +156,7 @@ class osqa (
     grant    => ['all'],
   }
 
-  file { "$install_dir/settings_local.py":
+  file { "$install_dir/osqa-server/settings_local.py":
     owner   => $username,
     content => template('osqa/settings_local.py.erb'),
     require => Vcsrepo["${install_dir}/osqa-server"]
