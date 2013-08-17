@@ -79,8 +79,17 @@ class osqa (
 
   file { "${install_dir}/osqa-server/log":
     ensure  => directory,
+    owner   => $username,
     group   => 'www-data',
-    mode    => 0770,
+    recurse => true,
+    mode    => 0775,
+    require => Vcsrepo["${install_dir}/osqa-server"],
+  }
+
+  file { "${install_dir}/osqa-server/log/django.osqa.log":
+    owner   => $username,
+    group   => 'www-data',
+    mode    => 0664,
     require => Vcsrepo["${install_dir}/osqa-server"],
   }
 
@@ -145,6 +154,12 @@ class osqa (
     require  => [User['osqa'], File[$install_dir]],
   }
 
+  file { "${install_dir}/osqa-server":
+    owner   => $username,
+    recurse => true,
+    require => Vcsrepo["${install_dir}/osqa-server"],
+  }
+
   file { "${install_dir}/osqa-server/osqa.wsgi":
     content => template('osqa/osqa.wsgi.erb'),
     require => User['osqa'],
@@ -188,13 +203,14 @@ class osqa (
     requirements => "${install_dir}/requirements.txt",
     owner        => $username,
     require      => [Vcsrepo["${install_dir}/osqa-server"], Class['python'], File["${install_dir}/requirements.txt"]],
+    notify       => Exec['syncdb'],
   }
 
   exec { 'syncdb':
     cwd         => "${install_dir}/osqa-server",
     provider    => shell,
     user        => $username,
-    command     => "source ../virtenv-osqa/bin/activate && ${install_dir}/virtenv-osqa/bin/python manage.py syncdb --all",
+    command     => ". ../virtenv-osqa/bin/activate && yes no | ${install_dir}/virtenv-osqa/bin/python manage.py syncdb --all",
     refreshonly => true,
     notify      => Exec['migrate-forum'],
   }
@@ -203,7 +219,7 @@ class osqa (
     cwd         => "${install_dir}/osqa-server",
     provider    => shell,
     user        => $username,
-    command     => "source ../virtenv-osqa/bin/activate && ${install_dir}/virtenv-osqa/bin/python manage.py migrate forum --fake",
+    command     => ". ../virtenv-osqa/bin/activate && ${install_dir}/virtenv-osqa/bin/python manage.py migrate forum --fake",
     refreshonly => true,
   }
 
