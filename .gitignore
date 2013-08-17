@@ -1,0 +1,5 @@
+Puppetfile.lock
+.librarian
+.tmp
+.swo
+.swp
