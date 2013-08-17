@@ -13,6 +13,15 @@ This module installs and configures OSQA (http://www.osqa.net/) with Mysql and A
     
 ## Usage
 
+# Simple Case
+
+```puppet
+include osqa
+
+```
+
+## More advanced case
+
 ```puppet
 class { 'osqa': 
   install_dir => '/home/osqa',
