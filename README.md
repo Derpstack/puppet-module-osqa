@@ -23,6 +23,6 @@ class { 'osqa':
   app_url     => 'http://osqa.example.org',
   db_username => 'osqa',
   db_password => 'changme!',
-) {
+}
 
 ```
