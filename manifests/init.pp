@@ -73,7 +73,7 @@ class osqa (
   # FIXME: 2013/08/16 apache module does not support wsgi yet
   file { '/etc/apache2/sites-enabled/wsgi.conf':
     ensure  => file,
-    content => "WSGISocketPrefix ${APACHE_RUN_DIR}WSGI\nWSGIPythonHome ${install_dir}/virtenv-osqa",
+    content => "WSGISocketPrefix \${APACHE_RUN_DIR}WSGI\nWSGIPythonHome ${install_dir}/virtenv-osqa",
     notify  => Service['apache2'],
   }
 
