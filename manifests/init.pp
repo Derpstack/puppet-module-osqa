@@ -43,16 +43,8 @@ class osqa (
   $db_password = 'changme!',
 ) {
 
-  class { 'apache':
-    default_vhost => false,
-  }
-  include apache::mod::wsgi
 
   group { $group:
-    ensure => present,
-  }
-
-  package { 'libmysqlclient-dev':
     ensure => present,
   }
 
@@ -70,62 +62,16 @@ class osqa (
     before  => File["${install_dir}/requirements.txt"],
   }
 
+  class { 'apache':
+    default_vhost => false,
+  }
+  include apache::mod::wsgi
+
   # FIXME: 2013/08/16 apache module does not support wsgi yet
   file { '/etc/apache2/sites-enabled/wsgi.conf':
     ensure  => file,
     content => "WSGISocketPrefix \${APACHE_RUN_DIR}WSGI\nWSGIPythonHome ${install_dir}/virtenv-osqa",
     notify  => Service['apache2'],
-  }
-
-  file { "${install_dir}/osqa-server/log":
-    ensure  => directory,
-    owner   => $username,
-    group   => 'www-data',
-    recurse => true,
-    mode    => '0775',
-    require => Vcsrepo["${install_dir}/osqa-server"],
-  }
-
-  file { "${install_dir}/osqa-server/log/django.osqa.log":
-    owner   => $username,
-    group   => 'www-data',
-    mode    => '0664',
-    require => Vcsrepo["${install_dir}/osqa-server"],
-  }
-
-  file { "${install_dir}/forum_modules":
-    ensure  => directory,
-    group   => 'www-data',
-    mode    => '0770',
-    require => Vcsrepo["${install_dir}/osqa-server"],
-  }
-
-  file { "${install_dir}/log":
-    ensure  => directory,
-    group   => 'www-data',
-    mode    => '0770',
-    require => Vcsrepo["${install_dir}/osqa-server"],
-  }
-
-  file { "${install_dir}/cache":
-    ensure  => directory,
-    group   => 'www-data',
-    mode    => '0770',
-    require => Vcsrepo["${install_dir}/osqa-server"],
-  }
-
-  file { "${install_dir}/osqa-server/cache":
-    ensure  => directory,
-    group   => 'www-data',
-    mode    => '0770',
-    require => Vcsrepo["${install_dir}/osqa-server"],
-  }
-
-  file { "${install_dir}/osqa-server/forum/upfiles":
-    ensure  => directory,
-    group   => 'www-data',
-    mode    => '0770',
-    require => Vcsrepo["${install_dir}/osqa-server"],
   }
 
   # FIXME: 2013/08/16 apache module does not support wsgi yet
@@ -154,6 +100,38 @@ class osqa (
     require  => [User['osqa'], File[$install_dir]],
   }
 
+
+
+  file { "${install_dir}/osqa-server/log":
+    ensure  => directory,
+    owner   => $username,
+    group   => 'www-data',
+    recurse => true,
+    mode    => '0775',
+    require => Vcsrepo["${install_dir}/osqa-server"],
+  }
+
+  file { "${install_dir}/osqa-server/log/django.osqa.log":
+    owner   => $username,
+    group   => 'www-data',
+    mode    => '0664',
+    require => Vcsrepo["${install_dir}/osqa-server"],
+  }
+
+  $osqa_directories = [
+   "${install_dir}/osqa-server/forum/upfiles",
+   "${install_dir}/osqa-server/cache",
+   "${install_dir}/cache",
+   "${install_dir}/log",
+   "${install_dir}/forum_modules"]
+
+  file { $osqa_directories:
+    ensure  => directory,
+    group   => 'www-data',
+    mode    => '0770',
+    require => Vcsrepo["${install_dir}/osqa-server"],
+  }
+
   file { "${install_dir}/osqa-server":
     owner   => $username,
     group   => $group,
@@ -166,8 +144,23 @@ class osqa (
     require => User['osqa'],
   }
 
+  file { "${install_dir}/osqa-server/settings_local.py":
+    owner   => $username,
+    content => template('osqa/settings_local.py.erb'),
+    require => Vcsrepo["${install_dir}/osqa-server"]
+  }
+
+  file { "${install_dir}/requirements.txt":
+    content => template('osqa/requirements.txt'),
+    require => Vcsrepo["${install_dir}/osqa-server"]
+  }
+
   class { 'mysql::server':
     config_hash => { 'root_password' => hiera('mysql_root_password', 'changme!') },
+  }
+
+  package { 'libmysqlclient-dev':
+    ensure => present,
   }
 
 
@@ -179,16 +172,6 @@ class osqa (
     grant    => ['all'],
   }
 
-  file { "${install_dir}/osqa-server/settings_local.py":
-    owner   => $username,
-    content => template('osqa/settings_local.py.erb'),
-    require => Vcsrepo["${install_dir}/osqa-server"]
-  }
-
-  file { "${install_dir}/requirements.txt":
-    content => template('osqa/requirements.txt'),
-    require => Vcsrepo["${install_dir}/osqa-server"]
-  }
 
   class { 'python':
     version    => 'system',
