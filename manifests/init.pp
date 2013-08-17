@@ -121,7 +121,7 @@ class osqa (
     require => Vcsrepo["${install_dir}/osqa-server"],
   }
 
-  file { '/home/osqa/osqa-server/forum/upfiles':
+  file { "${install_dir}/osqa-server/forum/upfiles":
     ensure  => directory,
     group   => 'www-data',
     mode    => 0770,
@@ -156,6 +156,7 @@ class osqa (
 
   file { "${install_dir}/osqa-server":
     owner   => $username,
+    group   => $group,
     recurse => true,
     require => Vcsrepo["${install_dir}/osqa-server"],
   }
