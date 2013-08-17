@@ -82,64 +82,64 @@ class osqa (
     owner   => $username,
     group   => 'www-data',
     recurse => true,
-    mode    => 0775,
+    mode    => '0775',
     require => Vcsrepo["${install_dir}/osqa-server"],
   }
 
   file { "${install_dir}/osqa-server/log/django.osqa.log":
     owner   => $username,
     group   => 'www-data',
-    mode    => 0664,
+    mode    => '0664',
     require => Vcsrepo["${install_dir}/osqa-server"],
   }
 
   file { "${install_dir}/forum_modules":
     ensure  => directory,
     group   => 'www-data',
-    mode    => 0770,
+    mode    => '0770',
     require => Vcsrepo["${install_dir}/osqa-server"],
   }
 
   file { "${install_dir}/log":
     ensure  => directory,
     group   => 'www-data',
-    mode    => 0770,
+    mode    => '0770',
     require => Vcsrepo["${install_dir}/osqa-server"],
   }
 
   file { "${install_dir}/cache":
     ensure  => directory,
     group   => 'www-data',
-    mode    => 0770,
+    mode    => '0770',
     require => Vcsrepo["${install_dir}/osqa-server"],
   }
 
   file { "${install_dir}/osqa-server/cache":
     ensure  => directory,
     group   => 'www-data',
-    mode    => 0770,
+    mode    => '0770',
     require => Vcsrepo["${install_dir}/osqa-server"],
   }
 
   file { "${install_dir}/osqa-server/forum/upfiles":
     ensure  => directory,
     group   => 'www-data',
-    mode    => 0770,
+    mode    => '0770',
     require => Vcsrepo["${install_dir}/osqa-server"],
   }
 
   # FIXME: 2013/08/16 apache module does not support wsgi yet
   apache::vhost { 'osqa-vhost':
     port            => 80,
-    docroot         => "$install_dir/osqa-server",
-    custom_fragment => "  WSGIDaemonProcess OSQA \n  WSGIProcessGroup OSQA\n  WSGIScriptAlias / $install_dir/osqa-server/osqa.wsgi\n ",
+    docroot         => "${install_dir}/osqa-server",
+    custom_fragment => "  WSGIDaemonProcess OSQA \n  WSGIProcessGroup OSQA\n  WSGIScriptAlias / ${install_dir}/osqa-server/osqa.wsgi\n ",
     directories => [
-      { path => "$install_dir/osqa-server/forum/upfiles", order => 'deny,allow', allow => 'from all' },
-      { path => "$install_dir/osqa-server/forum/skins", order => 'allow,deny', allow => 'from all' }
+      { path => "${install_dir}/osqa-server/forum/upfiles", order => 'deny,allow', allow => 'from all' },
+      { path => "${install_dir}/osqa-server/forum/skins", order => 'allow,deny', allow => 'from all' }
     ],
     aliases => [
-      { alias => '/m/', path => "$install_dir/osqa-server/forum/skins/" },
-      { alias => '/upfiles/', path => "$install_dir/osqa-server/forum/upfiles/" }
+      { alias => '/m/', path => "${install_dir}/osqa-server/forum/skins/" },
+      { alias => '/upfiles/', path => "${install_dir}/osqa-server/forum/upfiles/" }
     ],
     require => Vcsrepo["${install_dir}/osqa-server"],
   }
@@ -179,13 +179,13 @@ class osqa (
     grant    => ['all'],
   }
 
-  file { "$install_dir/osqa-server/settings_local.py":
+  file { "${install_dir}/osqa-server/settings_local.py":
     owner   => $username,
     content => template('osqa/settings_local.py.erb'),
     require => Vcsrepo["${install_dir}/osqa-server"]
   }
 
-  file { "$install_dir/requirements.txt":
+  file { "${install_dir}/requirements.txt":
     content => template('osqa/requirements.txt'),
     require => Vcsrepo["${install_dir}/osqa-server"]
   }
