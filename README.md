@@ -17,7 +17,6 @@ This module installs and configures OSQA (http://www.osqa.net/) with Mysql and A
 
 ```puppet
 include osqa
-
 ```
 
 ### More advanced case
