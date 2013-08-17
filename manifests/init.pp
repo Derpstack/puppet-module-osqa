@@ -133,15 +133,15 @@ class osqa (
     port            => 80,
     docroot         => "${install_dir}/osqa-server",
     custom_fragment => "  WSGIDaemonProcess OSQA \n  WSGIProcessGroup OSQA\n  WSGIScriptAlias / ${install_dir}/osqa-server/osqa.wsgi\n ",
-    directories => [
+    directories     => [
       { path => "${install_dir}/osqa-server/forum/upfiles", order => 'deny,allow', allow => 'from all' },
-      { path => "${install_dir}/osqa-server/forum/skins", order => 'allow,deny', allow => 'from all' }
+      { path => "${install_dir}/osqa-server/forum/skins",   order => 'allow,deny', allow => 'from all' }
     ],
-    aliases => [
-      { alias => '/m/', path => "${install_dir}/osqa-server/forum/skins/" },
+    aliases         => [
+      { alias => '/m/',       path => "${install_dir}/osqa-server/forum/skins/" },
       { alias => '/upfiles/', path => "${install_dir}/osqa-server/forum/upfiles/" }
     ],
-    require => Vcsrepo["${install_dir}/osqa-server"],
+    require         => Vcsrepo["${install_dir}/osqa-server"],
   }
 
   vcsrepo { "${install_dir}/osqa-server":
