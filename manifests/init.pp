@@ -33,12 +33,12 @@
 # Copyright 2013 Your name here, unless otherwise noted.
 #
 class osqa (
+  $app_url,
   $install_dir = '/home/osqa',
   $username    = 'osqa',
   $group       = 'osqa',
   $db_name     = 'osqa',
   $timezone    = 'America/Los_Angeles',
-  $app_url     = 'http://puppet-article-4',
   $db_username = 'osqa',
   $db_password = 'changme!',
 ) {
@@ -65,20 +65,20 @@ class osqa (
   class { 'apache':
     default_vhost => false,
   }
-  include apache::mod::wsgi
 
-  # FIXME: 2013/08/16 apache module does not support wsgi yet
-  file { '/etc/apache2/sites-enabled/wsgi.conf':
-    ensure  => file,
-    content => "WSGISocketPrefix \${APACHE_RUN_DIR}WSGI\nWSGIPythonHome ${install_dir}/virtenv-osqa",
-    notify  => Service['apache2'],
+  class { 'apache::mod::wsgi':
+     wsgi_socket_prefix => "\${APACHE_RUN_DIR}WSGI",
+     wsgi_python_home   => "${install_dir}/virtenv-osqa",
   }
 
-  # FIXME: 2013/08/16 apache module does not support wsgi yet
   apache::vhost { 'osqa-vhost':
     port            => 80,
     docroot         => "${install_dir}/osqa-server",
-    custom_fragment => "  WSGIDaemonProcess OSQA \n  WSGIProcessGroup OSQA\n  WSGIScriptAlias / ${install_dir}/osqa-server/osqa.wsgi\n ",
+    wsgi_daemon_process => 'OSQA',
+    wsgi_process_group  => 'OSQA',
+    wsgi_script_aliases => [
+      { alias => '/', path => "${install_dir}/osqa-server/osqa.wsgi" }
+    ],
     directories     => [
       { path => "${install_dir}/osqa-server/forum/upfiles", order => 'deny,allow', allow => 'from all' },
       { path => "${install_dir}/osqa-server/forum/skins",   order => 'allow,deny', allow => 'from all' }
